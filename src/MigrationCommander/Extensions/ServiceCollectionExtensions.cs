@@ -4,6 +4,7 @@ using MigrationCommander.Core.Interfaces;
 using MigrationCommander.Core.Services;
 using MigrationCommander.Data;
 using MigrationCommander.Data.Repositories;
+using MigrationCommander.Data.Services;
 using MigrationCommander.Providers;
 using MigrationCommander.Providers.MySQL;
 using MigrationCommander.Providers.PostgreSQL;
@@ -57,6 +58,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<UserRepository>();
         services.AddScoped<ApprovalRequestRepository>();
 
+        // Register seed data service
+        services.AddScoped<SeedDataService>();
+
         // Register providers
         services.AddScoped<SqlServerMigrationProvider>();
         services.AddScoped<PostgreSqlMigrationProvider>();
@@ -101,8 +105,9 @@ public static class ServiceCollectionExtensions
     /// Configures MigrationCommander middleware.
     /// </summary>
     /// <param name="app">The application builder.</param>
+    /// <param name="seedTestData">Whether to seed comprehensive test data. Defaults to false.</param>
     /// <returns>The application builder for chaining.</returns>
-    public static IApplicationBuilder UseMigrationCommander(this IApplicationBuilder app)
+    public static IApplicationBuilder UseMigrationCommander(this IApplicationBuilder app, bool seedTestData = false)
     {
         // Ensure internal database is created and seeded
         using var scope = app.ApplicationServices.CreateScope();
@@ -112,6 +117,13 @@ public static class ServiceCollectionExtensions
         // Seed default roles for authorization
         var userRepository = scope.ServiceProvider.GetRequiredService<UserRepository>();
         userRepository.SeedDefaultRolesAsync().GetAwaiter().GetResult();
+
+        // Seed comprehensive test data if requested
+        if (seedTestData)
+        {
+            var seedService = scope.ServiceProvider.GetRequiredService<SeedDataService>();
+            seedService.SeedAllAsync().GetAwaiter().GetResult();
+        }
 
         return app;
     }

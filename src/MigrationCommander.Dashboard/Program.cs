@@ -24,8 +24,8 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
-// Initialize MigrationCommander database
-app.UseMigrationCommander();
+// Initialize MigrationCommander database and seed test data
+app.UseMigrationCommander(seedTestData: true);
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
