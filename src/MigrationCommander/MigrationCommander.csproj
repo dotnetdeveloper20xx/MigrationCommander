@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>MigrationCommander</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
+    <PackageReference Include="QuestPDF" Version="2024.3.0" />
+    <PackageReference Include="ClosedXML" Version="0.102.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MigrationCommander.Core\MigrationCommander.Core.csproj" />
+    <ProjectReference Include="..\MigrationCommander.Data\MigrationCommander.Data.csproj" />
+    <ProjectReference Include="..\MigrationCommander.Providers\MigrationCommander.Providers.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/SampleApp/SampleApp.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/MigrationCommander.Core/MigrationCommander.Core.csproj" />
+    <Project Path="src/MigrationCommander.Dashboard/MigrationCommander.Dashboard.csproj" />
+    <Project Path="src/MigrationCommander.Data/MigrationCommander.Data.csproj" />
+    <Project Path="src/MigrationCommander.Providers/MigrationCommander.Providers.csproj" />
+    <Project Path="src/MigrationCommander/MigrationCommander.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MigrationCommander.Core.Tests/MigrationCommander.Core.Tests.csproj" />
+    <Project Path="tests/MigrationCommander.Integration.Tests/MigrationCommander.Integration.Tests.csproj" />
+  </Folder>
+</Solution>

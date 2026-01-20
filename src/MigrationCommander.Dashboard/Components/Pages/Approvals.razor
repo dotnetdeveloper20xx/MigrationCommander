@@ -1,0 +1,459 @@
+@page "/approvals"
+@using MigrationCommander.Core.Interfaces
+@using MigrationCommander.Core.Models
+@using MigrationCommander.Dashboard.Services
+@inject IApprovalWorkflow ApprovalWorkflow
+@inject UserContextService UserContext
+
+<PageTitle>Approvals - MigrationCommander</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Approval Requests</h1>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "pending" ? "active" : "")" @onclick='() => _activeTab = "pending"'>
+                Pending <span class="badge bg-warning text-dark ms-1">@_pendingRequests.Count</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "my-requests" ? "active" : "")" @onclick='() => _activeTab = "my-requests"'>
+                My Requests
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "history" ? "active" : "")" @onclick='() => _activeTab = "history"'>
+                History
+            </button>
+        </li>
+    </ul>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (_activeTab == "pending")
+    {
+        @if (_pendingRequests.Any())
+        {
+            <div class="row g-4">
+                @foreach (var request in _pendingRequests)
+                {
+                    <div class="col-md-6">
+                        <div class="card h-100 border-warning">
+                            <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-warning text-dark me-2">Pending Approval</span>
+                                    <span class="badge bg-secondary">@request.EnvironmentName</span>
+                                </div>
+                                <small class="text-muted">@request.RequestedAt.ToString("MMM d, HH:mm")</small>
+                            </div>
+                            <div class="card-body">
+                                <h6>Migration</h6>
+                                <code class="d-block mb-3">@request.MigrationId</code>
+
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <small class="text-muted">Requested By</small>
+                                        <div>@request.RequestedBy</div>
+                                        <small class="text-muted">@request.RequestedByEmail</small>
+                                    </div>
+                                    @if (request.ExpiresAt.HasValue)
+                                    {
+                                        <div class="col-6">
+                                            <small class="text-muted">Expires</small>
+                                            <div class="@(request.ExpiresAt < DateTime.UtcNow.AddHours(2) ? "text-danger" : "")">
+                                                @request.ExpiresAt.Value.ToString("MMM d, HH:mm")
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(request.RequestComments))
+                                {
+                                    <div class="mb-3">
+                                        <small class="text-muted">Comments</small>
+                                        <div class="bg-light p-2 rounded small">@request.RequestComments</div>
+                                    </div>
+                                }
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-success flex-grow-1" @onclick="() => ShowApproveModal(request)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-1" viewBox="0 0 16 16">
+                                            <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z"/>
+                                        </svg>
+                                        Approve
+                                    </button>
+                                    <button class="btn btn-danger flex-grow-1" @onclick="() => ShowRejectModal(request)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-1" viewBox="0 0 16 16">
+                                            <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+                                        </svg>
+                                        Reject
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-check-circle text-success mb-3" viewBox="0 0 16 16">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                    <path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/>
+                </svg>
+                <h4 class="text-muted">No pending approvals</h4>
+                <p class="text-muted">All approval requests have been processed.</p>
+            </div>
+        }
+    }
+    else if (_activeTab == "my-requests")
+    {
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Migration</th>
+                                <th>Environment</th>
+                                <th>Requested</th>
+                                <th>Status</th>
+                                <th>Reviewed By</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var request in _myRequests)
+                            {
+                                <tr>
+                                    <td><code>@request.MigrationId</code></td>
+                                    <td><span class="badge bg-secondary">@request.EnvironmentName</span></td>
+                                    <td><small class="text-muted">@request.RequestedAt.ToString("MMM d, HH:mm")</small></td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(request.Status)">@request.Status</span>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(request.ReviewedBy))
+                                        {
+                                            <span>@request.ReviewedBy</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        @if (request.Status == ApprovalStatus.Pending)
+                                        {
+                                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => CancelRequest(request)">Cancel</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Migration</th>
+                                <th>Environment</th>
+                                <th>Requested By</th>
+                                <th>Requested</th>
+                                <th>Status</th>
+                                <th>Reviewed By</th>
+                                <th>Reviewed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var request in _allRequests.OrderByDescending(r => r.RequestedAt))
+                            {
+                                <tr>
+                                    <td><code class="small">@request.MigrationId</code></td>
+                                    <td><span class="badge bg-secondary">@request.EnvironmentName</span></td>
+                                    <td>@request.RequestedBy</td>
+                                    <td><small class="text-muted">@request.RequestedAt.ToString("MMM d, HH:mm")</small></td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(request.Status)">@request.Status</span>
+                                    </td>
+                                    <td>@(request.ReviewedBy ?? "-")</td>
+                                    <td>
+                                        @if (request.ReviewedAt.HasValue)
+                                        {
+                                            <small class="text-muted">@request.ReviewedAt.Value.ToString("MMM d, HH:mm")</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Approve Modal -->
+@if (_showApproveModal && _selectedRequest != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Approve Request</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModals"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>Migration:</strong> @_selectedRequest.MigrationId
+                        <br />
+                        <strong>Environment:</strong> @_selectedRequest.EnvironmentName
+                        <br />
+                        <strong>Requested By:</strong> @_selectedRequest.RequestedBy
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Comments (optional)</label>
+                        <textarea class="form-control" rows="3" @bind="_approveComments" placeholder="Add any comments for the requester..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModals">Cancel</button>
+                    <button type="button" class="btn btn-success" @onclick="ConfirmApprove" disabled="@_processing">
+                        @if (_processing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Approve
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Reject Modal -->
+@if (_showRejectModal && _selectedRequest != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Reject Request</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModals"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <strong>Migration:</strong> @_selectedRequest.MigrationId
+                        <br />
+                        <strong>Environment:</strong> @_selectedRequest.EnvironmentName
+                        <br />
+                        <strong>Requested By:</strong> @_selectedRequest.RequestedBy
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Rejection Reason <span class="text-danger">*</span></label>
+                        <textarea class="form-control" rows="3" @bind="_rejectReason" placeholder="Please provide a reason for rejection..."></textarea>
+                    </div>
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="alert alert-danger mb-0">@_errorMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModals">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmReject" disabled="@_processing">
+                        @if (_processing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Reject
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string _activeTab = "pending";
+    private List<ApprovalRequest> _pendingRequests = new();
+    private List<ApprovalRequest> _myRequests = new();
+    private List<ApprovalRequest> _allRequests = new();
+    private bool _loading = true;
+
+    private bool _showApproveModal = false;
+    private bool _showRejectModal = false;
+    private ApprovalRequest? _selectedRequest;
+    private string _approveComments = "";
+    private string _rejectReason = "";
+    private bool _processing = false;
+    private string _errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Load pending approvals
+            _pendingRequests = (await ApprovalWorkflow.GetPendingAsync()).ToList();
+
+            // Load my requests
+            _myRequests = (await ApprovalWorkflow.GetByUserAsync(UserContext.Username)).ToList();
+
+            // Load all requests for history
+            _allRequests = (await ApprovalWorkflow.GetAllAsync()).ToList();
+        }
+        catch
+        {
+            _pendingRequests = new List<ApprovalRequest>();
+            _myRequests = new List<ApprovalRequest>();
+            _allRequests = new List<ApprovalRequest>();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ShowApproveModal(ApprovalRequest request)
+    {
+        _selectedRequest = request;
+        _approveComments = "";
+        _showApproveModal = true;
+    }
+
+    private void ShowRejectModal(ApprovalRequest request)
+    {
+        _selectedRequest = request;
+        _rejectReason = "";
+        _errorMessage = "";
+        _showRejectModal = true;
+    }
+
+    private void CloseModals()
+    {
+        _showApproveModal = false;
+        _showRejectModal = false;
+        _selectedRequest = null;
+    }
+
+    private async Task ConfirmApprove()
+    {
+        if (_selectedRequest == null) return;
+
+        _processing = true;
+        StateHasChanged();
+
+        try
+        {
+            await ApprovalWorkflow.ApproveAsync(
+                _selectedRequest.Id,
+                UserContext.Username,
+                UserContext.Email,
+                _approveComments);
+
+            CloseModals();
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _processing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ConfirmReject()
+    {
+        if (_selectedRequest == null) return;
+
+        _errorMessage = "";
+        if (string.IsNullOrWhiteSpace(_rejectReason))
+        {
+            _errorMessage = "Please provide a rejection reason.";
+            return;
+        }
+
+        _processing = true;
+        StateHasChanged();
+
+        try
+        {
+            await ApprovalWorkflow.RejectAsync(
+                _selectedRequest.Id,
+                UserContext.Username,
+                UserContext.Email,
+                _rejectReason);
+
+            CloseModals();
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _processing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CancelRequest(ApprovalRequest request)
+    {
+        try
+        {
+            await ApprovalWorkflow.CancelAsync(
+                request.Id,
+                UserContext.Username);
+            await LoadDataAsync();
+        }
+        catch
+        {
+            // Handle error
+        }
+    }
+
+    private string GetStatusBadgeClass(ApprovalStatus status) => status switch
+    {
+        ApprovalStatus.Pending => "bg-warning text-dark",
+        ApprovalStatus.Approved => "bg-success",
+        ApprovalStatus.Rejected => "bg-danger",
+        ApprovalStatus.Expired => "bg-secondary",
+        ApprovalStatus.Cancelled => "bg-secondary",
+        _ => "bg-secondary"
+    };
+}

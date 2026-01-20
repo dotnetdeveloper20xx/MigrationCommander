@@ -1,0 +1,459 @@
+@page "/reports"
+@using MigrationCommander.Core.Interfaces
+@using MigrationCommander.Core.Models
+@inject IEnvironmentManager EnvironmentManager
+@inject IAuditLogger AuditLogger
+@inject IMigrationDiscovery MigrationDiscovery
+
+<PageTitle>Reports - MigrationCommander</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Reports & Statistics</h1>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50">Total Environments</h6>
+                            <h2 class="mb-0">@_stats.TotalEnvironments</h2>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="opacity-25" viewBox="0 0 16 16">
+                            <path d="M12.166 8.94c-.524 1.062-1.234 2.12-1.96 3.07A31.493 31.493 0 0 1 8 14.58a31.481 31.481 0 0 1-2.206-2.57c-.726-.95-1.436-2.008-1.96-3.07C3.304 7.867 3 6.862 3 6a5 5 0 0 1 10 0c0 .862-.305 1.867-.834 2.94M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50">Applied Migrations</h6>
+                            <h2 class="mb-0">@_stats.TotalApplied</h2>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="opacity-25" viewBox="0 0 16 16">
+                            <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="opacity-75">Pending Migrations</h6>
+                            <h2 class="mb-0">@_stats.TotalPending</h2>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="opacity-25" viewBox="0 0 16 16">
+                            <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71z"/>
+                            <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-white-50">Audit Entries</h6>
+                            <h2 class="mb-0">@_stats.TotalAuditEntries</h2>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="opacity-25" viewBox="0 0 16 16">
+                            <path d="M14.5 3a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5zm-13-1A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2z"/>
+                            <path d="M3 5.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M3 8a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 8m0 2.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "overview" ? "active" : "")" @onclick='() => _activeTab = "overview"'>
+                Overview
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "environments" ? "active" : "")" @onclick='() => _activeTab = "environments"'>
+                Environment Status
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "comparison" ? "active" : "")" @onclick="() => LoadComparison()">
+                Environment Comparison
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "export" ? "active" : "")" @onclick='() => _activeTab = "export"'>
+                Export
+            </button>
+        </li>
+    </ul>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        @switch (_activeTab)
+        {
+            case "overview":
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Recent Activity</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Action</th>
+                                        <th>Environment</th>
+                                        <th>Migration</th>
+                                        <th>User</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var entry in _recentActivity)
+                                    {
+                                        <tr>
+                                            <td><small class="text-muted">@entry.Timestamp.ToString("MMM d, HH:mm")</small></td>
+                                            <td><span class="badge bg-secondary">@entry.Action</span></td>
+                                            <td>@entry.EnvironmentName</td>
+                                            <td><code class="small">@(entry.MigrationId ?? "-")</code></td>
+                                            <td>@entry.UserEmail</td>
+                                            <td>
+                                                @if (entry.Success)
+                                                {
+                                                    <span class="badge bg-success">Success</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-danger">Failed</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                break;
+
+            case "environments":
+                <div class="row g-4">
+                    @foreach (var env in _environments)
+                    {
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">@env.DisplayName</h5>
+                                    @if (env.IsProduction)
+                                    {
+                                        <span class="badge bg-danger">Production</span>
+                                    }
+                                </div>
+                                <div class="card-body">
+                                    <div class="row text-center mb-3">
+                                        <div class="col-4">
+                                            <div class="h3 text-success mb-0">@env.AppliedMigrationCount</div>
+                                            <small class="text-muted">Applied</small>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="h3 text-warning mb-0">@env.PendingMigrationCount</div>
+                                            <small class="text-muted">Pending</small>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="h3 mb-0">@GetProviderShortName(env.Provider)</div>
+                                            <small class="text-muted">Provider</small>
+                                        </div>
+                                    </div>
+                                    @if (env.LastMigrationAt.HasValue)
+                                    {
+                                        <div class="text-muted small">
+                                            Last migration: @env.LastMigrationAt.Value.ToString("yyyy-MM-dd HH:mm")
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(env.LastError))
+                                    {
+                                        <div class="alert alert-danger mt-2 mb-0 py-1 small">
+                                            @env.LastError
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                break;
+
+            case "comparison":
+                @if (_comparison != null)
+                {
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Migration Status Across Environments</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-bordered mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Migration</th>
+                                            @foreach (var env in _comparison.Environments)
+                                            {
+                                                <th class="text-center">@env.Name</th>
+                                            }
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var migrationId in _comparison.AllMigrations.Take(20))
+                                        {
+                                            <tr>
+                                                <td><code class="small">@migrationId</code></td>
+                                                @foreach (var env in _comparison.Environments)
+                                                {
+                                                    var status = _comparison.MigrationStatuses.GetValueOrDefault(migrationId)?.GetValueOrDefault(env.Id);
+                                                    <td class="text-center">
+                                                        @if (status.HasValue)
+                                                        {
+                                                            <span class="badge @GetStatusBadgeClass(status.Value)">@status.Value</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">-</span>
+                                                        }
+                                                    </td>
+                                                }
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        @if (_comparison.SyncIssues.Any())
+                        {
+                            <div class="card-footer">
+                                <h6 class="text-warning">Sync Issues Detected</h6>
+                                <ul class="mb-0">
+                                    @foreach (var issue in _comparison.SyncIssues.Take(5))
+                                    {
+                                        <li class="small">@issue.Description</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info">Loading comparison data...</div>
+                }
+                break;
+
+            case "export":
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Export Reports</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Report Type</label>
+                                <select class="form-select" @bind="_exportReportType">
+                                    <option value="audit">Audit Trail Report</option>
+                                    <option value="migration">Migration Summary Report</option>
+                                    <option value="environment">Environment Status Report</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Format</label>
+                                <select class="form-select" @bind="_exportFormat">
+                                    <option value="csv">CSV</option>
+                                    <option value="json">JSON</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">From Date</label>
+                                <input type="date" class="form-control" @bind="_exportFromDate" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">To Date</label>
+                                <input type="date" class="form-control" @bind="_exportToDate" />
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button class="btn btn-primary" @onclick="ExportReport" disabled="@_exporting">
+                                @if (_exporting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                }
+                                Export Report
+                            </button>
+                        </div>
+                        @if (!string.IsNullOrEmpty(_exportMessage))
+                        {
+                            <div class="alert @(_exportSuccess ? "alert-success" : "alert-danger") mt-3 mb-0">
+                                @_exportMessage
+                            </div>
+                        }
+                    </div>
+                </div>
+                break;
+        }
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private string _activeTab = "overview";
+
+    private DashboardStats _stats = new();
+    private List<DatabaseEnvironment> _environments = new();
+    private List<AuditLogEntry> _recentActivity = new();
+    private EnvironmentComparisonResult? _comparison;
+
+    // Export state
+    private string _exportReportType = "audit";
+    private string _exportFormat = "csv";
+    private DateTime? _exportFromDate;
+    private DateTime? _exportToDate;
+    private bool _exporting = false;
+    private string _exportMessage = "";
+    private bool _exportSuccess = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            _environments = (await EnvironmentManager.GetAllAsync()).ToList();
+
+            // Calculate stats
+            _stats.TotalEnvironments = _environments.Count;
+            _stats.TotalApplied = _environments.Sum(e => e.AppliedMigrationCount);
+            _stats.TotalPending = _environments.Sum(e => e.PendingMigrationCount);
+
+            // Get recent audit entries
+            var filter = new AuditLogFilter { Take = 10 };
+            _recentActivity = (await AuditLogger.GetLogsAsync(filter)).ToList();
+            _stats.TotalAuditEntries = await AuditLogger.GetCountAsync(new AuditLogFilter());
+        }
+        catch
+        {
+            // Handle error
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadComparison()
+    {
+        _activeTab = "comparison";
+        _comparison = null;
+        StateHasChanged();
+
+        try
+        {
+            if (_environments.Any())
+            {
+                _comparison = await MigrationDiscovery.CompareEnvironmentsAsync(_environments);
+            }
+        }
+        catch
+        {
+            // Handle error
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ExportReport()
+    {
+        _exporting = true;
+        _exportMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            var filter = new AuditLogFilter
+            {
+                FromDate = _exportFromDate,
+                ToDate = _exportToDate?.AddDays(1),
+                Take = 10000
+            };
+
+            var data = await AuditLogger.ExportLogsAsync(filter, _exportFormat);
+
+            // In a real app, you'd trigger a file download here
+            _exportSuccess = true;
+            _exportMessage = $"Export generated successfully ({data.Length} bytes). Download feature coming soon.";
+        }
+        catch (Exception ex)
+        {
+            _exportSuccess = false;
+            _exportMessage = $"Export failed: {ex.Message}";
+        }
+        finally
+        {
+            _exporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetProviderShortName(ProviderType provider) => provider switch
+    {
+        ProviderType.SqlServer => "SQL",
+        ProviderType.PostgreSQL => "PG",
+        ProviderType.MySQL => "MySQL",
+        ProviderType.SQLite => "SQLite",
+        _ => "?"
+    };
+
+    private string GetStatusBadgeClass(MigrationStatus status) => status switch
+    {
+        MigrationStatus.Applied => "bg-success",
+        MigrationStatus.Pending => "bg-warning text-dark",
+        MigrationStatus.Failed => "bg-danger",
+        MigrationStatus.RolledBack => "bg-info",
+        _ => "bg-secondary"
+    };
+
+    private class DashboardStats
+    {
+        public int TotalEnvironments { get; set; }
+        public int TotalApplied { get; set; }
+        public int TotalPending { get; set; }
+        public int TotalAuditEntries { get; set; }
+    }
+}

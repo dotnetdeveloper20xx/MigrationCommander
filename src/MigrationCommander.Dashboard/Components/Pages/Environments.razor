@@ -1,0 +1,448 @@
+@page "/environments"
+@using MigrationCommander.Core.Interfaces
+@using MigrationCommander.Core.Models
+@inject IEnvironmentManager EnvironmentManager
+
+<PageTitle>Environments - MigrationCommander</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Database Environments</h1>
+        <button class="btn btn-primary" @onclick="ShowAddModal">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-lg me-1" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/>
+            </svg>
+            Add Environment
+        </button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (_environments.Any())
+    {
+        <div class="row g-4">
+            @foreach (var env in _environments)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 @(env.IsProduction ? "border-danger" : "")">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                @if (env.IsProduction)
+                                {
+                                    <span class="badge bg-danger me-2">PROD</span>
+                                }
+                                <h5 class="mb-0">@env.DisplayName</h5>
+                            </div>
+                            <span class="badge @GetProviderBadgeClass(env.Provider)">@env.Provider</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <small class="text-muted">Connection:</small>
+                                <div class="font-monospace small text-truncate" title="@MaskConnectionString(env.ConnectionString)">
+                                    @MaskConnectionString(env.ConnectionString)
+                                </div>
+                            </div>
+
+                            <div class="row g-3 text-center">
+                                <div class="col-4">
+                                    <div class="border rounded p-2">
+                                        <div class="h4 mb-0 text-success">@env.AppliedMigrationCount</div>
+                                        <small class="text-muted">Applied</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="border rounded p-2">
+                                        <div class="h4 mb-0 text-warning">@env.PendingMigrationCount</div>
+                                        <small class="text-muted">Pending</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="border rounded p-2">
+                                        <div class="h4 mb-0 @(env.IsActive ? "text-success" : "text-secondary")">
+                                            @(env.IsActive ? "Yes" : "No")
+                                        </div>
+                                        <small class="text-muted">Active</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (env.LastMigrationAt.HasValue)
+                            {
+                                <div class="mt-3">
+                                    <small class="text-muted">Last migration: @env.LastMigrationAt.Value.ToString("MMM d, yyyy HH:mm")</small>
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(env.LastError))
+                            {
+                                <div class="alert alert-danger mt-3 mb-0 py-2 small">
+                                    @env.LastError
+                                </div>
+                            }
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <div class="d-flex justify-content-between">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => TestConnection(env)">
+                                    Test Connection
+                                </button>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-secondary" @onclick="() => ShowEditModal(env)">
+                                        Edit
+                                    </button>
+                                    <button class="btn btn-outline-danger" @onclick="() => DeleteEnvironment(env)">
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-database-add text-muted mb-3" viewBox="0 0 16 16">
+                <path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7m.5-5v1h1a.5.5 0 0 1 0 1h-1v1a.5.5 0 0 1-1 0v-1h-1a.5.5 0 0 1 0-1h1v-1a.5.5 0 0 1 1 0"/>
+                <path d="M12.096 6.223A4.92 4.92 0 0 0 13 5.698V7c0 .289-.213.654-.753 1.007a4.493 4.493 0 0 1 1.753.25V4c0-1.007-.875-1.755-1.904-2.223C11.022 1.289 9.573 1 8 1s-3.022.289-4.096.777C2.875 2.245 2 2.993 2 4v9c0 1.007.875 1.755 1.904 2.223C4.978 15.71 6.427 16 8 16c.536 0 1.058-.034 1.555-.097a4.525 4.525 0 0 1-.813-.927C8.5 14.992 8.252 15 8 15c-1.464 0-2.766-.27-3.682-.687C3.356 13.875 3 13.373 3 13v-1.302c.271.202.58.378.904.525C4.978 12.71 6.427 13 8 13h.027a4.552 4.552 0 0 1 0-1H8c-1.464 0-2.766-.27-3.682-.687C3.356 10.875 3 10.373 3 10V8.698c.271.202.58.378.904.525C4.978 9.71 6.427 10 8 10c.262 0 .52-.008.774-.024a4.525 4.525 0 0 1 1.102-1.132C9.298 8.944 8.666 9 8 9c-1.464 0-2.766-.27-3.682-.687C3.356 7.875 3 7.373 3 7V5.698c.271.202.58.378.904.525C4.978 6.71 6.427 7 8 7s3.022-.289 4.096-.777M3 4c0-.374.356-.875 1.318-1.313C5.234 2.271 6.536 2 8 2s2.766.27 3.682.687C12.644 3.125 13 3.627 13 4c0 .374-.356.875-1.318 1.313C10.766 5.729 9.464 6 8 6s-2.766-.27-3.682-.687C3.356 4.875 3 4.373 3 4"/>
+            </svg>
+            <h4 class="text-muted">No environments configured</h4>
+            <p class="text-muted">Add your first database environment to get started.</p>
+            <button class="btn btn-primary" @onclick="ShowAddModal">Add Environment</button>
+        </div>
+    }
+</div>
+
+<!-- Add/Edit Modal -->
+@if (_showModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editingEnvironment == null ? "Add Environment" : "Edit Environment")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="_formModel.Name" placeholder="e.g., development, staging, production" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Display Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="_formModel.DisplayName" placeholder="e.g., Development Server" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Provider <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="_formModel.Provider">
+                            <option value="@ProviderType.SqlServer">SQL Server</option>
+                            <option value="@ProviderType.PostgreSQL">PostgreSQL</option>
+                            <option value="@ProviderType.MySQL">MySQL</option>
+                            <option value="@ProviderType.SQLite">SQLite</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Connection String <span class="text-danger">*</span></label>
+                        <textarea class="form-control font-monospace" rows="3" @bind="_formModel.ConnectionString"
+                                  placeholder="@GetConnectionStringPlaceholder(_formModel.Provider)"></textarea>
+                        <div class="form-text">Connection strings are stored encrypted.</div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" @bind="_formModel.IsProduction" id="isProduction">
+                                <label class="form-check-label" for="isProduction">
+                                    Production Environment
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" @bind="_formModel.RequiresApproval" id="requiresApproval">
+                                <label class="form-check-label" for="requiresApproval">
+                                    Requires Approval
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="alert alert-danger mt-3 mb-0">@_errorMessage</div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_successMessage))
+                    {
+                        <div class="alert alert-success mt-3 mb-0">@_successMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveEnvironment" disabled="@_saving">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        @(_editingEnvironment == null ? "Add" : "Save")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Test Connection Modal -->
+@if (_showTestModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Connection Test</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showTestModal = false"></button>
+                </div>
+                <div class="modal-body text-center">
+                    @if (_testingConnection)
+                    {
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Testing...</span>
+                        </div>
+                        <p>Testing connection...</p>
+                    }
+                    else if (_testSuccess)
+                    {
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-check-circle text-success mb-3" viewBox="0 0 16 16">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                            <path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/>
+                        </svg>
+                        <p class="text-success mb-0">Connection successful!</p>
+                    }
+                    else
+                    {
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-x-circle text-danger mb-3" viewBox="0 0 16 16">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                            <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+                        </svg>
+                        <p class="text-danger mb-0">Connection failed</p>
+                        <small class="text-muted">@_testErrorMessage</small>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showTestModal = false">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<DatabaseEnvironment> _environments = new();
+    private bool _loading = true;
+
+    private bool _showModal = false;
+    private DatabaseEnvironment? _editingEnvironment;
+    private EnvironmentFormModel _formModel = new();
+    private bool _saving = false;
+    private string _errorMessage = "";
+    private string _successMessage = "";
+
+    private bool _showTestModal = false;
+    private bool _testingConnection = false;
+    private bool _testSuccess = false;
+    private string _testErrorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEnvironments();
+    }
+
+    private async Task LoadEnvironments()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            _environments = (await EnvironmentManager.GetAllAsync()).ToList();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ShowAddModal()
+    {
+        _editingEnvironment = null;
+        _formModel = new EnvironmentFormModel();
+        _errorMessage = "";
+        _successMessage = "";
+        _showModal = true;
+    }
+
+    private void ShowEditModal(DatabaseEnvironment env)
+    {
+        _editingEnvironment = env;
+        _formModel = new EnvironmentFormModel
+        {
+            Name = env.Name,
+            DisplayName = env.DisplayName,
+            Provider = env.Provider,
+            ConnectionString = env.ConnectionString,
+            IsProduction = env.IsProduction,
+            RequiresApproval = env.RequiresApproval
+        };
+        _errorMessage = "";
+        _successMessage = "";
+        _showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        _showModal = false;
+        _editingEnvironment = null;
+    }
+
+    private async Task SaveEnvironment()
+    {
+        _errorMessage = "";
+        _successMessage = "";
+
+        if (string.IsNullOrWhiteSpace(_formModel.Name) ||
+            string.IsNullOrWhiteSpace(_formModel.DisplayName) ||
+            string.IsNullOrWhiteSpace(_formModel.ConnectionString))
+        {
+            _errorMessage = "Please fill in all required fields.";
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+
+        try
+        {
+            var environment = _editingEnvironment ?? new DatabaseEnvironment { Id = Guid.NewGuid() };
+            environment.Name = _formModel.Name;
+            environment.DisplayName = _formModel.DisplayName;
+            environment.Provider = _formModel.Provider;
+            environment.ConnectionString = _formModel.ConnectionString;
+            environment.IsProduction = _formModel.IsProduction;
+            environment.RequiresApproval = _formModel.RequiresApproval;
+            environment.IsActive = true;
+
+            if (_editingEnvironment == null)
+            {
+                environment.CreatedAt = DateTime.UtcNow;
+                await EnvironmentManager.AddAsync(environment);
+            }
+            else
+            {
+                await EnvironmentManager.UpdateAsync(environment);
+            }
+
+            await LoadEnvironments();
+            CloseModal();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error saving environment: {ex.Message}";
+        }
+        finally
+        {
+            _saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteEnvironment(DatabaseEnvironment env)
+    {
+        try
+        {
+            await EnvironmentManager.RemoveAsync(env.Id);
+            await LoadEnvironments();
+        }
+        catch (Exception ex)
+        {
+            // Show error
+        }
+    }
+
+    private async Task TestConnection(DatabaseEnvironment env)
+    {
+        _showTestModal = true;
+        _testingConnection = true;
+        _testSuccess = false;
+        _testErrorMessage = "";
+        StateHasChanged();
+
+        try
+        {
+            var (success, errorMessage) = await EnvironmentManager.TestConnectionAsync(env);
+            _testSuccess = success;
+            if (!success)
+            {
+                _testErrorMessage = errorMessage ?? "Could not establish connection.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _testSuccess = false;
+            _testErrorMessage = ex.Message;
+        }
+        finally
+        {
+            _testingConnection = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetProviderBadgeClass(ProviderType provider) => provider switch
+    {
+        ProviderType.SqlServer => "bg-info text-dark",
+        ProviderType.PostgreSQL => "bg-primary",
+        ProviderType.MySQL => "bg-warning text-dark",
+        ProviderType.SQLite => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private string MaskConnectionString(string connectionString)
+    {
+        if (string.IsNullOrEmpty(connectionString)) return "";
+        if (connectionString.Length > 50)
+        {
+            return connectionString.Substring(0, 30) + "...***";
+        }
+        return connectionString.Substring(0, Math.Min(20, connectionString.Length)) + "...";
+    }
+
+    private string GetConnectionStringPlaceholder(ProviderType provider) => provider switch
+    {
+        ProviderType.SqlServer => "Server=localhost;Database=MyDb;User Id=sa;Password=***;",
+        ProviderType.PostgreSQL => "Host=localhost;Database=mydb;Username=postgres;Password=***;",
+        ProviderType.MySQL => "Server=localhost;Database=mydb;User=root;Password=***;",
+        ProviderType.SQLite => "Data Source=mydb.db",
+        _ => ""
+    };
+
+    private class EnvironmentFormModel
+    {
+        public string Name { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public ProviderType Provider { get; set; } = ProviderType.SqlServer;
+        public string ConnectionString { get; set; } = "";
+        public bool IsProduction { get; set; }
+        public bool RequiresApproval { get; set; }
+    }
+}

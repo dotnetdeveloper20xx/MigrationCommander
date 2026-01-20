@@ -1,0 +1,272 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\tests\\MigrationCommander.Core.Tests\\MigrationCommander.Core.Tests.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Core\\MigrationCommander.Core.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Core\\MigrationCommander.Core.csproj",
+        "projectName": "MigrationCommander.Core",
+        "projectPath": "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Core\\MigrationCommander.Core.csproj",
+        "packagesPath": "C:\\Users\\AfzalAhmed\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Core\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\AfzalAhmed\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.100"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.Design": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.Relational": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Providers\\MigrationCommander.Providers.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Providers\\MigrationCommander.Providers.csproj",
+        "projectName": "MigrationCommander.Providers",
+        "projectPath": "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Providers\\MigrationCommander.Providers.csproj",
+        "packagesPath": "C:\\Users\\AfzalAhmed\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Providers\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\AfzalAhmed\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Core\\MigrationCommander.Core.csproj": {
+                "projectPath": "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Core\\MigrationCommander.Core.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.100"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.SqlServer": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.Sqlite": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Npgsql.EntityFrameworkCore.PostgreSQL": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Pomelo.EntityFrameworkCore.MySql": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\tests\\MigrationCommander.Core.Tests\\MigrationCommander.Core.Tests.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\tests\\MigrationCommander.Core.Tests\\MigrationCommander.Core.Tests.csproj",
+        "projectName": "MigrationCommander.Core.Tests",
+        "projectPath": "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\tests\\MigrationCommander.Core.Tests\\MigrationCommander.Core.Tests.csproj",
+        "packagesPath": "C:\\Users\\AfzalAhmed\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\tests\\MigrationCommander.Core.Tests\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\AfzalAhmed\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Core\\MigrationCommander.Core.csproj": {
+                "projectPath": "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Core\\MigrationCommander.Core.csproj"
+              },
+              "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Providers\\MigrationCommander.Providers.csproj": {
+                "projectPath": "C:\\Users\\AfzalAhmed\\source\\repos\\dotnetdeveloper20xx\\MultipleDatabaseEFMirgrator\\MigrationCommander\\src\\MigrationCommander.Providers\\MigrationCommander.Providers.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.100"
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.NET.Test.Sdk": {
+              "target": "Package",
+              "version": "[17.8.0, )"
+            },
+            "Moq": {
+              "target": "Package",
+              "version": "[4.20.70, )"
+            },
+            "coverlet.collector": {
+              "target": "Package",
+              "version": "[6.0.0, )"
+            },
+            "xunit": {
+              "target": "Package",
+              "version": "[2.5.3, )"
+            },
+            "xunit.runner.visualstudio": {
+              "target": "Package",
+              "version": "[2.5.3, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.102/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

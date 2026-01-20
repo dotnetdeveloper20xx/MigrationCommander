@@ -1,0 +1,399 @@
+@page "/rollback"
+@using MigrationCommander.Core.Interfaces
+@using MigrationCommander.Core.Models
+@inject IEnvironmentManager EnvironmentManager
+@inject IMigrationDiscovery MigrationDiscovery
+@inject IRollbackManager RollbackManager
+@inject NavigationManager NavigationManager
+
+<PageTitle>Rollback - MigrationCommander</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Rollback Migration</h1>
+    </div>
+
+    <!-- Stepper -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between position-relative" style="max-width: 600px;">
+                <div class="text-center">
+                    <div class="rounded-circle @(_step >= 1 ? "bg-primary" : "bg-secondary") text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">1</div>
+                    <small class="d-block mt-1">Select</small>
+                </div>
+                <div class="text-center">
+                    <div class="rounded-circle @(_step >= 2 ? "bg-primary" : "bg-secondary") text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">2</div>
+                    <small class="d-block mt-1">Analyze</small>
+                </div>
+                <div class="text-center">
+                    <div class="rounded-circle @(_step >= 3 ? "bg-primary" : "bg-secondary") text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">3</div>
+                    <small class="d-block mt-1">Confirm</small>
+                </div>
+                <div class="text-center">
+                    <div class="rounded-circle @(_step >= 4 ? "bg-primary" : "bg-secondary") text-white d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">4</div>
+                    <small class="d-block mt-1">Execute</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (_step == 1)
+    {
+        <!-- Step 1: Select Environment and Migration -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Select Environment and Migration</h5>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Environment</label>
+                        <select class="form-select" @bind="_selectedEnvironmentId" @bind:after="OnEnvironmentChanged">
+                            <option value="">Select environment...</option>
+                            @foreach (var env in _environments)
+                            {
+                                <option value="@env.Id">
+                                    @env.DisplayName @(env.IsProduction ? "(PRODUCTION)" : "")
+                                </option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Migration to Rollback</label>
+                        <select class="form-select" @bind="_selectedMigrationId" disabled="@(_selectedEnvironmentId == Guid.Empty)">
+                            <option value="">Select migration...</option>
+                            @foreach (var migration in _appliedMigrations)
+                            {
+                                <option value="@migration.Id">@migration.Name (@migration.Timestamp.ToString("yyyy-MM-dd"))</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                @if (_selectedEnvironment?.IsProduction == true)
+                {
+                    <div class="alert alert-danger mt-3 d-flex align-items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-exclamation-triangle-fill me-2 flex-shrink-0" viewBox="0 0 16 16">
+                            <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+                        </svg>
+                        <div>
+                            <strong>Production Environment!</strong> Please ensure you have a backup before proceeding.
+                        </div>
+                    </div>
+                }
+
+                <div class="mt-4">
+                    <button class="btn btn-primary" @onclick="AnalyzeRollback"
+                            disabled="@(_selectedEnvironmentId == Guid.Empty || string.IsNullOrEmpty(_selectedMigrationId))">
+                        Analyze Rollback
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+    else if (_step == 2)
+    {
+        <!-- Step 2: Analysis Results -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Rollback Analysis</h5>
+
+                @if (_analyzing)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Analyzing...</span>
+                        </div>
+                        <p class="mt-2">Analyzing rollback impact...</p>
+                    </div>
+                }
+                else if (_analysis != null)
+                {
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="card @GetRiskCardClass(_analysis.RiskLevel)">
+                                <div class="card-body text-center">
+                                    <h3 class="mb-0">@_analysis.RiskLevel</h3>
+                                    <small>Risk Level</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h3 class="mb-0">@_analysis.TotalRowsAffected.ToString("N0")</h3>
+                                    <small>Rows Affected</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (_analysis.Warnings.Any())
+                    {
+                        <div class="alert alert-warning mt-3">
+                            <h6>Warnings:</h6>
+                            <ul class="mb-0">
+                                @foreach (var warning in _analysis.Warnings)
+                                {
+                                    <li>@warning</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    @if (_analysis.AffectedTables.Any())
+                    {
+                        <h6 class="mt-3">Affected Tables:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Table</th>
+                                        <th>Action</th>
+                                        <th>Current Rows</th>
+                                        <th>Rows to Delete</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var table in _analysis.AffectedTables)
+                                    {
+                                        <tr>
+                                            <td>@table.TableName</td>
+                                            <td>
+                                                <span class="badge @(table.WillDropTable ? "bg-danger" : "bg-warning text-dark")">
+                                                    @table.Action
+                                                </span>
+                                            </td>
+                                            <td>@table.CurrentRowCount.ToString("N0")</td>
+                                            <td>@table.RowsToBeDeleted.ToString("N0")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_analysis.DownSql))
+                    {
+                        <h6 class="mt-3">Rollback SQL:</h6>
+                        <pre class="bg-dark text-light p-3 rounded" style="max-height: 200px; overflow-y: auto;"><code>@_analysis.DownSql</code></pre>
+                    }
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button class="btn btn-secondary" @onclick="() => _step = 1">Back</button>
+                        @if (_analysis.CanRollback)
+                        {
+                            <button class="btn btn-warning" @onclick="() => _step = 3">Continue to Confirmation</button>
+                        }
+                        else
+                        {
+                            <div class="alert alert-danger mb-0 py-2 px-3">
+                                Cannot rollback: @_analysis.BlockingReason
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else if (_step == 3)
+    {
+        <!-- Step 3: Confirmation -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Confirm Rollback</h5>
+
+                <div class="alert alert-danger">
+                    <strong>You are about to rollback a migration!</strong>
+                    <p class="mb-0 mt-2">This action may result in data loss and cannot be easily undone.</p>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Reason for Rollback</label>
+                    <textarea class="form-control" rows="2" @bind="_rollbackReason" placeholder="Enter reason for rollback..."></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Type <code>ROLLBACK</code> to confirm:</label>
+                    <input type="text" class="form-control" style="max-width: 200px;" @bind="_confirmationText" />
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <button class="btn btn-secondary" @onclick="() => _step = 2">Back</button>
+                    <button class="btn btn-danger" @onclick="ExecuteRollback"
+                            disabled="@(_confirmationText != "ROLLBACK")">
+                        Execute Rollback
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+    else if (_step == 4)
+    {
+        <!-- Step 4: Execution -->
+        <div class="card">
+            <div class="card-body text-center">
+                @if (_executing)
+                {
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 4rem; height: 4rem;">
+                        <span class="visually-hidden">Executing...</span>
+                    </div>
+                    <h5>Executing Rollback...</h5>
+                    <p class="text-muted">@_executionMessage</p>
+                    <div class="progress" style="max-width: 400px; margin: 0 auto;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
+                             role="progressbar" style="width: @_executionProgress%">
+                            @_executionProgress%
+                        </div>
+                    </div>
+                }
+                else if (_executionResult != null)
+                {
+                    @if (_executionResult.Success)
+                    {
+                        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="currentColor" class="bi bi-check-circle text-success mb-3" viewBox="0 0 16 16">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                            <path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/>
+                        </svg>
+                        <h4 class="text-success">Rollback Completed Successfully!</h4>
+                        <p class="text-muted">Duration: @_executionResult.Duration.TotalSeconds.ToString("F2") seconds</p>
+                    }
+                    else
+                    {
+                        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="currentColor" class="bi bi-x-circle text-danger mb-3" viewBox="0 0 16 16">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                            <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+                        </svg>
+                        <h4 class="text-danger">Rollback Failed</h4>
+                        <p class="text-muted">@_executionResult.ErrorMessage</p>
+                    }
+
+                    <div class="mt-4">
+                        <a href="migrations" class="btn btn-primary">Back to Migrations</a>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? MigrationId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public Guid? EnvironmentId { get; set; }
+
+    private int _step = 1;
+    private List<DatabaseEnvironment> _environments = new();
+    private List<MigrationInfo> _appliedMigrations = new();
+
+    private Guid _selectedEnvironmentId = Guid.Empty;
+    private string _selectedMigrationId = "";
+    private DatabaseEnvironment? _selectedEnvironment;
+
+    private bool _analyzing = false;
+    private RollbackAnalysis? _analysis;
+
+    private string _rollbackReason = "";
+    private string _confirmationText = "";
+
+    private bool _executing = false;
+    private string _executionMessage = "";
+    private int _executionProgress = 0;
+    private ExecutionResult? _executionResult;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _environments = (await EnvironmentManager.GetAllAsync()).ToList();
+
+        if (EnvironmentId.HasValue && EnvironmentId.Value != Guid.Empty)
+        {
+            _selectedEnvironmentId = EnvironmentId.Value;
+            await OnEnvironmentChanged();
+
+            if (!string.IsNullOrEmpty(MigrationId))
+            {
+                _selectedMigrationId = MigrationId;
+            }
+        }
+    }
+
+    private async Task OnEnvironmentChanged()
+    {
+        _appliedMigrations.Clear();
+        _selectedEnvironment = _environments.FirstOrDefault(e => e.Id == _selectedEnvironmentId);
+
+        if (_selectedEnvironment != null)
+        {
+            _appliedMigrations = (await MigrationDiscovery.GetAppliedMigrationsAsync(_selectedEnvironment))
+                .OrderByDescending(m => m.Timestamp)
+                .ToList();
+        }
+    }
+
+    private async Task AnalyzeRollback()
+    {
+        if (_selectedEnvironment == null || string.IsNullOrEmpty(_selectedMigrationId)) return;
+
+        _step = 2;
+        _analyzing = true;
+        StateHasChanged();
+
+        try
+        {
+            _analysis = await RollbackManager.AnalyzeRollbackAsync(_selectedEnvironment, _selectedMigrationId);
+        }
+        finally
+        {
+            _analyzing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ExecuteRollback()
+    {
+        if (_selectedEnvironment == null || string.IsNullOrEmpty(_selectedMigrationId)) return;
+
+        _step = 4;
+        _executing = true;
+        _executionMessage = "Starting rollback...";
+        _executionProgress = 0;
+        StateHasChanged();
+
+        try
+        {
+            var options = new RollbackOptions
+            {
+                Force = true,
+                Reason = _rollbackReason
+            };
+
+            _executionResult = await RollbackManager.RollbackMigrationAsync(
+                _selectedEnvironment,
+                _selectedMigrationId,
+                options);
+        }
+        catch (Exception ex)
+        {
+            _executionResult = new ExecutionResult
+            {
+                Success = false,
+                ErrorMessage = ex.Message
+            };
+        }
+        finally
+        {
+            _executing = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetRiskCardClass(RollbackRiskLevel risk) => risk switch
+    {
+        RollbackRiskLevel.Low => "bg-success text-white",
+        RollbackRiskLevel.Medium => "bg-warning text-dark",
+        RollbackRiskLevel.High => "bg-danger text-white",
+        RollbackRiskLevel.Critical => "bg-danger text-white",
+        _ => "bg-secondary text-white"
+    };
+}

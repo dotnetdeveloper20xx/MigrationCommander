@@ -1,0 +1,325 @@
+@page "/"
+@using MigrationCommander.Core.Interfaces
+@using MigrationCommander.Core.Models
+@inject IEnvironmentManager EnvironmentManager
+@inject IAuditLogger AuditLogger
+
+<PageTitle>Dashboard - MigrationCommander</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Dashboard</h1>
+        <div>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="RefreshData">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise me-1" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+                    <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
+                </svg>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Stats Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-1 text-white-50">Total Environments</h6>
+                                <h2 class="card-title mb-0">@_environments.Count</h2>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-hdd-stack opacity-25" viewBox="0 0 16 16">
+                                <path d="M14 10a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1zM2 9a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1a2 2 0 0 0-2-2z"/>
+                                <path d="M5 11.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m-2 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0M14 3a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM2 2a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>
+                                <path d="M5 4.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m-2 0a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-1 text-white-50">Applied Migrations</h6>
+                                <h2 class="card-title mb-0">@_totalApplied</h2>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-check-circle opacity-25" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                                <path d="m10.97 4.97-.02.022-3.473 4.425-2.093-2.094a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-1 opacity-75">Pending Migrations</h6>
+                                <h2 class="card-title mb-0">@_totalPending</h2>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-clock-history opacity-25" viewBox="0 0 16 16">
+                                <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z"/>
+                                <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z"/>
+                                <path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-danger text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-1 text-white-50">Production Envs</h6>
+                                <h2 class="card-title mb-0">@_environments.Count(e => e.IsProduction)</h2>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-exclamation-triangle opacity-25" viewBox="0 0 16 16">
+                                <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.15.15 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.2.2 0 0 1-.054.06.1.1 0 0 1-.066.017H1.146a.1.1 0 0 1-.066-.017.2.2 0 0 1-.054-.06.18.18 0 0 1 .002-.183L7.884 2.073a.15.15 0 0 1 .054-.057m1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767z"/>
+                                <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0z"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Environment Status -->
+            <div class="col-lg-8">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Environment Status</h5>
+                        <a href="environments" class="btn btn-sm btn-outline-primary">Manage</a>
+                    </div>
+                    <div class="card-body">
+                        @if (_environments.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Environment</th>
+                                            <th>Provider</th>
+                                            <th>Applied</th>
+                                            <th>Pending</th>
+                                            <th>Status</th>
+                                            <th>Last Migration</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var env in _environments)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        @if (env.IsProduction)
+                                                        {
+                                                            <span class="badge bg-danger me-2">PROD</span>
+                                                        }
+                                                        <span>@env.DisplayName</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge @GetProviderBadgeClass(env.Provider)">
+                                                        @env.Provider
+                                                    </span>
+                                                </td>
+                                                <td>@env.AppliedMigrationCount</td>
+                                                <td>
+                                                    @if (env.PendingMigrationCount > 0)
+                                                    {
+                                                        <span class="badge bg-warning text-dark">@env.PendingMigrationCount</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">0</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (env.IsActive)
+                                                    {
+                                                        <span class="badge bg-success">Active</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">Inactive</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (env.LastMigrationAt.HasValue)
+                                                    {
+                                                        <span class="text-muted">@env.LastMigrationAt.Value.ToString("MMM d, HH:mm")</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">-</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4">
+                                <p class="text-muted mb-3">No environments configured</p>
+                                <a href="environments" class="btn btn-primary">Add Environment</a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Recent Activity</h5>
+                        <a href="audit" class="btn btn-sm btn-outline-primary">View All</a>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (_recentActivity.Any())
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var entry in _recentActivity.Take(8))
+                                {
+                                    <div class="list-group-item">
+                                        <div class="d-flex w-100 justify-content-between align-items-start">
+                                            <div>
+                                                <span class="badge @GetActionBadgeClass(entry.Action) me-2">
+                                                    @GetActionLabel(entry.Action)
+                                                </span>
+                                                <small class="text-muted d-block mt-1">@entry.MigrationId</small>
+                                            </div>
+                                            <small class="text-muted">@GetRelativeTime(entry.Timestamp)</small>
+                                        </div>
+                                        <small class="text-muted">@entry.EnvironmentName</small>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-4">
+                                <p class="text-muted mb-0">No recent activity</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Migrations Alert -->
+        @if (_totalPending > 0)
+        {
+            <div class="alert alert-warning mt-4 d-flex align-items-center" role="alert">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-exclamation-triangle-fill me-3 flex-shrink-0" viewBox="0 0 16 16">
+                    <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+                </svg>
+                <div>
+                    <strong>@_totalPending pending migration(s)</strong> across your environments.
+                    <a href="migrations" class="alert-link">View migrations</a> to review and apply.
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private List<DatabaseEnvironment> _environments = new();
+    private List<AuditLogEntry> _recentActivity = new();
+    private int _totalApplied = 0;
+    private int _totalPending = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshData();
+    }
+
+    private async Task RefreshData()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            _environments = (await EnvironmentManager.GetAllAsync()).ToList();
+
+            _totalApplied = _environments.Sum(e => e.AppliedMigrationCount);
+            _totalPending = _environments.Sum(e => e.PendingMigrationCount);
+
+            var filter = new AuditLogFilter { Take = 10 };
+            _recentActivity = (await AuditLogger.GetLogsAsync(filter)).ToList();
+        }
+        catch
+        {
+            // Handle error gracefully
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetProviderBadgeClass(ProviderType provider) => provider switch
+    {
+        ProviderType.SqlServer => "bg-info text-dark",
+        ProviderType.PostgreSQL => "bg-primary",
+        ProviderType.MySQL => "bg-warning text-dark",
+        ProviderType.SQLite => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private string GetActionBadgeClass(AuditAction action) => action switch
+    {
+        AuditAction.AppliedMigration => "bg-success",
+        AuditAction.RolledBackMigration => "bg-warning text-dark",
+        AuditAction.ViewedMigration => "bg-info text-dark",
+        AuditAction.PreviewedSql => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private string GetActionLabel(AuditAction action) => action switch
+    {
+        AuditAction.AppliedMigration => "Applied",
+        AuditAction.RolledBackMigration => "Rollback",
+        AuditAction.ViewedMigration => "Viewed",
+        AuditAction.PreviewedSql => "Preview",
+        AuditAction.ScheduledMigration => "Scheduled",
+        AuditAction.CancelledSchedule => "Cancelled",
+        AuditAction.ModifiedEnvironment => "Modified",
+        AuditAction.ExportedReport => "Exported",
+        _ => action.ToString()
+    };
+
+    private string GetRelativeTime(DateTime timestamp)
+    {
+        var diff = DateTime.UtcNow - timestamp;
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+        return timestamp.ToString("MMM d");
+    }
+}

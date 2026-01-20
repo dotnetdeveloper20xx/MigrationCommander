@@ -1,0 +1,548 @@
+@page "/schedule"
+@using MigrationCommander.Core.Interfaces
+@using MigrationCommander.Core.Models
+@using MigrationCommander.Dashboard.Services
+@inject IMigrationScheduler MigrationScheduler
+@inject IEnvironmentManager EnvironmentManager
+@inject IMigrationDiscovery MigrationDiscovery
+@inject UserContextService UserContext
+
+<PageTitle>Schedule - MigrationCommander</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Scheduled Migrations</h1>
+        <button class="btn btn-primary" @onclick="ShowScheduleModal">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calendar-plus me-1" viewBox="0 0 16 16">
+                <path d="M8 7a.5.5 0 0 1 .5.5V9H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V10H6a.5.5 0 0 1 0-1h1.5V7.5A.5.5 0 0 1 8 7"/>
+                <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/>
+            </svg>
+            Schedule Migration
+        </button>
+    </div>
+
+    <!-- Filter Controls -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <label class="form-label">Environment Filter</label>
+            <select class="form-select" @bind="_filterEnvironmentId" @bind:after="LoadScheduledMigrations">
+                <option value="@Guid.Empty">All Environments</option>
+                @foreach (var env in _environments)
+                {
+                    <option value="@env.Id">@env.DisplayName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Status Filter</label>
+            <select class="form-select" @bind="_filterStatus" @bind:after="LoadScheduledMigrations">
+                <option value="">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Running">Running</option>
+                <option value="Completed">Completed</option>
+                <option value="Failed">Failed</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-outline-secondary" @onclick="LoadScheduledMigrations">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise me-1" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+                    <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
+                </svg>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (_scheduledMigrations.Any())
+    {
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Migration</th>
+                                <th>Environment</th>
+                                <th>Scheduled For</th>
+                                <th>Scheduled By</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var scheduled in GetFilteredScheduledMigrations())
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="font-monospace">@scheduled.MigrationId</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">@scheduled.EnvironmentName</span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span>@scheduled.ScheduledAt.ToString("yyyy-MM-dd HH:mm")</span>
+                                            @if (scheduled.IsDue && scheduled.Status == ScheduledMigrationStatus.Pending)
+                                            {
+                                                <small class="text-warning">Due now</small>
+                                            }
+                                            else if (scheduled.Status == ScheduledMigrationStatus.Pending)
+                                            {
+                                                <small class="text-muted">In @GetTimeUntil(scheduled.ScheduledAt)</small>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span>@scheduled.ScheduledBy</span>
+                                        <br />
+                                        <small class="text-muted">@scheduled.CreatedAt.ToString("MMM d, HH:mm")</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(scheduled.Status)">
+                                            @scheduled.Status
+                                        </span>
+                                        @if (scheduled.Status == ScheduledMigrationStatus.Failed && !string.IsNullOrEmpty(scheduled.ErrorMessage))
+                                        {
+                                            <button class="btn btn-link btn-sm p-0 ms-1" @onclick="() => ShowErrorDetails(scheduled)" title="View Error">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-info-circle text-danger" viewBox="0 0 16 16">
+                                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                                                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
+                                                </svg>
+                                            </button>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        @if (scheduled.CanCancel)
+                                        {
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-secondary" @onclick="() => ShowRescheduleModal(scheduled)" title="Reschedule">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                                        <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/>
+                                                    </svg>
+                                                </button>
+                                                <button class="btn btn-outline-danger" @onclick="() => CancelSchedule(scheduled)" title="Cancel">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                                        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        }
+                                        else if (scheduled.Status == ScheduledMigrationStatus.Running)
+                                        {
+                                            <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-calendar-x text-muted mb-3" viewBox="0 0 16 16">
+                <path d="M6.146 7.146a.5.5 0 0 1 .708 0L8 8.293l1.146-1.147a.5.5 0 1 1 .708.708L8.707 9l1.147 1.146a.5.5 0 0 1-.708.708L8 9.707l-1.146 1.147a.5.5 0 0 1-.708-.708L7.293 9 6.146 7.854a.5.5 0 0 1 0-.708"/>
+                <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/>
+            </svg>
+            <h4 class="text-muted">No scheduled migrations</h4>
+            <p class="text-muted">Schedule a migration to run at a specific time.</p>
+            <button class="btn btn-primary" @onclick="ShowScheduleModal">Schedule Migration</button>
+        </div>
+    }
+</div>
+
+<!-- Schedule Modal -->
+@if (_showScheduleModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Schedule Migration</h5>
+                    <button type="button" class="btn-close" @onclick="CloseScheduleModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Environment <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="_formEnvironmentId" @bind:after="LoadMigrationsForEnvironment">
+                            <option value="@Guid.Empty">Select Environment</option>
+                            @foreach (var env in _environments)
+                            {
+                                <option value="@env.Id">@env.DisplayName</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Migration <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="_formMigrationId" disabled="@(_formEnvironmentId == Guid.Empty)">
+                            <option value="">Select Migration</option>
+                            @foreach (var migration in _availableMigrations)
+                            {
+                                <option value="@migration.Id">@migration.Name (@migration.Id)</option>
+                            }
+                        </select>
+                        @if (_formEnvironmentId != Guid.Empty && !_availableMigrations.Any())
+                        {
+                            <div class="form-text text-warning">No pending migrations available for this environment.</div>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Scheduled Date/Time (UTC) <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" @bind="_formScheduledAt" min="@DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm")" />
+                        <div class="form-text">The migration will be executed at or shortly after this time.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" rows="2" @bind="_formNotes" placeholder="Optional notes about this scheduled migration"></textarea>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="alert alert-danger mb-0">@_errorMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseScheduleModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="CreateSchedule" disabled="@_saving">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Schedule
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Reschedule Modal -->
+@if (_showRescheduleModal && _selectedSchedule != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reschedule Migration</h5>
+                    <button type="button" class="btn-close" @onclick="CloseRescheduleModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        Rescheduling: <strong>@_selectedSchedule.MigrationId</strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">New Date/Time (UTC) <span class="text-danger">*</span></label>
+                        <input type="datetime-local" class="form-control" @bind="_rescheduleDateTime" min="@DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm")" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="alert alert-danger mb-0">@_errorMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseRescheduleModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="ConfirmReschedule" disabled="@_saving">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Reschedule
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Error Details Modal -->
+@if (_showErrorModal && _selectedSchedule != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Execution Error</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showErrorModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <strong>Migration:</strong> @_selectedSchedule.MigrationId
+                        <br />
+                        <strong>Environment:</strong> @_selectedSchedule.EnvironmentName
+                        <br />
+                        <strong>Executed At:</strong> @_selectedSchedule.ExecutedAt?.ToString("yyyy-MM-dd HH:mm:ss")
+                    </div>
+                    <div class="bg-light p-3 rounded">
+                        <pre class="mb-0 text-danger" style="white-space: pre-wrap;">@_selectedSchedule.ErrorMessage</pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showErrorModal = false">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<DatabaseEnvironment> _environments = new();
+    private List<ScheduledMigrationInfo> _scheduledMigrations = new();
+    private List<MigrationInfo> _availableMigrations = new();
+    private bool _loading = true;
+
+    // Filter state
+    private Guid _filterEnvironmentId = Guid.Empty;
+    private string _filterStatus = "";
+
+    // Schedule modal state
+    private bool _showScheduleModal = false;
+    private Guid _formEnvironmentId = Guid.Empty;
+    private string _formMigrationId = "";
+    private DateTime _formScheduledAt = DateTime.UtcNow.AddHours(1);
+    private string _formNotes = "";
+    private bool _saving = false;
+    private string _errorMessage = "";
+
+    // Reschedule modal state
+    private bool _showRescheduleModal = false;
+    private ScheduledMigrationInfo? _selectedSchedule;
+    private DateTime _rescheduleDateTime = DateTime.UtcNow.AddHours(1);
+
+    // Error modal state
+    private bool _showErrorModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _environments = (await EnvironmentManager.GetAllAsync()).ToList();
+        await LoadScheduledMigrations();
+    }
+
+    private async Task LoadScheduledMigrations()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            _scheduledMigrations = (await MigrationScheduler.GetScheduledAsync(
+                _filterEnvironmentId == Guid.Empty ? null : _filterEnvironmentId)).ToList();
+        }
+        catch
+        {
+            _scheduledMigrations = new();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private IEnumerable<ScheduledMigrationInfo> GetFilteredScheduledMigrations()
+    {
+        var filtered = _scheduledMigrations.AsEnumerable();
+
+        if (!string.IsNullOrEmpty(_filterStatus) && Enum.TryParse<ScheduledMigrationStatus>(_filterStatus, out var status))
+        {
+            filtered = filtered.Where(s => s.Status == status);
+        }
+
+        return filtered.OrderByDescending(s => s.ScheduledAt);
+    }
+
+    private async Task LoadMigrationsForEnvironment()
+    {
+        if (_formEnvironmentId == Guid.Empty)
+        {
+            _availableMigrations = new();
+            return;
+        }
+
+        var environment = _environments.FirstOrDefault(e => e.Id == _formEnvironmentId);
+        if (environment == null)
+        {
+            _availableMigrations = new();
+            return;
+        }
+
+        try
+        {
+            _availableMigrations = (await MigrationDiscovery.GetPendingMigrationsAsync(environment)).ToList();
+        }
+        catch
+        {
+            _availableMigrations = new();
+        }
+
+        StateHasChanged();
+    }
+
+    private void ShowScheduleModal()
+    {
+        _formEnvironmentId = Guid.Empty;
+        _formMigrationId = "";
+        _formScheduledAt = DateTime.UtcNow.AddHours(1);
+        _formNotes = "";
+        _errorMessage = "";
+        _availableMigrations = new();
+        _showScheduleModal = true;
+    }
+
+    private void CloseScheduleModal()
+    {
+        _showScheduleModal = false;
+    }
+
+    private async Task CreateSchedule()
+    {
+        _errorMessage = "";
+
+        if (_formEnvironmentId == Guid.Empty)
+        {
+            _errorMessage = "Please select an environment.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_formMigrationId))
+        {
+            _errorMessage = "Please select a migration.";
+            return;
+        }
+
+        if (_formScheduledAt <= DateTime.UtcNow)
+        {
+            _errorMessage = "Scheduled time must be in the future.";
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+
+        try
+        {
+            await MigrationScheduler.ScheduleMigrationAsync(
+                _formEnvironmentId,
+                _formMigrationId,
+                _formScheduledAt,
+                UserContext.Username,
+                _formNotes);
+
+            CloseScheduleModal();
+            await LoadScheduledMigrations();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error scheduling migration: {ex.Message}";
+        }
+        finally
+        {
+            _saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ShowRescheduleModal(ScheduledMigrationInfo scheduled)
+    {
+        _selectedSchedule = scheduled;
+        _rescheduleDateTime = DateTime.UtcNow.AddHours(1);
+        _errorMessage = "";
+        _showRescheduleModal = true;
+    }
+
+    private void CloseRescheduleModal()
+    {
+        _showRescheduleModal = false;
+        _selectedSchedule = null;
+    }
+
+    private async Task ConfirmReschedule()
+    {
+        if (_selectedSchedule == null) return;
+
+        _errorMessage = "";
+
+        if (_rescheduleDateTime <= DateTime.UtcNow)
+        {
+            _errorMessage = "Scheduled time must be in the future.";
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+
+        try
+        {
+            await MigrationScheduler.RescheduleAsync(_selectedSchedule.Id, _rescheduleDateTime);
+            CloseRescheduleModal();
+            await LoadScheduledMigrations();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error rescheduling: {ex.Message}";
+        }
+        finally
+        {
+            _saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CancelSchedule(ScheduledMigrationInfo scheduled)
+    {
+        try
+        {
+            await MigrationScheduler.CancelScheduleAsync(
+                scheduled.Id,
+                UserContext.Username,
+                "Cancelled from dashboard");
+            await LoadScheduledMigrations();
+        }
+        catch
+        {
+            // Handle error
+        }
+    }
+
+    private void ShowErrorDetails(ScheduledMigrationInfo scheduled)
+    {
+        _selectedSchedule = scheduled;
+        _showErrorModal = true;
+    }
+
+    private string GetStatusBadgeClass(ScheduledMigrationStatus status) => status switch
+    {
+        ScheduledMigrationStatus.Pending => "bg-warning text-dark",
+        ScheduledMigrationStatus.Running => "bg-info",
+        ScheduledMigrationStatus.Completed => "bg-success",
+        ScheduledMigrationStatus.Failed => "bg-danger",
+        ScheduledMigrationStatus.Cancelled => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private string GetTimeUntil(DateTime scheduledAt)
+    {
+        var diff = scheduledAt - DateTime.UtcNow;
+        if (diff.TotalDays >= 1) return $"{(int)diff.TotalDays}d {diff.Hours}h";
+        if (diff.TotalHours >= 1) return $"{(int)diff.TotalHours}h {diff.Minutes}m";
+        if (diff.TotalMinutes >= 1) return $"{(int)diff.TotalMinutes}m";
+        return "< 1m";
+    }
+}

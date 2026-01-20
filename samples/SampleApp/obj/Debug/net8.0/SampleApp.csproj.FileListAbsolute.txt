@@ -1,0 +1,11 @@
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\samples\SampleApp\bin\Debug\net8.0\SampleApp.deps.json
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\samples\SampleApp\bin\Debug\net8.0\SampleApp.dll
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\samples\SampleApp\bin\Debug\net8.0\SampleApp.pdb
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\samples\SampleApp\obj\Debug\net8.0\SampleApp.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\samples\SampleApp\obj\Debug\net8.0\SampleApp.AssemblyInfoInputs.cache
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\samples\SampleApp\obj\Debug\net8.0\SampleApp.AssemblyInfo.cs
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\samples\SampleApp\obj\Debug\net8.0\SampleApp.csproj.CoreCompileInputs.cache
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\samples\SampleApp\obj\Debug\net8.0\SampleApp.dll
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\samples\SampleApp\obj\Debug\net8.0\refint\SampleApp.dll
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\samples\SampleApp\obj\Debug\net8.0\SampleApp.pdb
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\samples\SampleApp\obj\Debug\net8.0\ref\SampleApp.dll

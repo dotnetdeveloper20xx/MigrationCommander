@@ -1,0 +1,336 @@
+@page "/audit"
+@using MigrationCommander.Core.Interfaces
+@using MigrationCommander.Core.Models
+@inject IAuditLogger AuditLogger
+@inject IEnvironmentManager EnvironmentManager
+
+<PageTitle>Audit Log - MigrationCommander</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Audit Log</h1>
+        <button class="btn btn-outline-primary btn-sm" @onclick="ExportLogs">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download me-1" viewBox="0 0 16 16">
+                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708z"/>
+            </svg>
+            Export
+        </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Environment</label>
+                    <select class="form-select form-select-sm" @bind="_filter.EnvironmentId">
+                        <option value="">All Environments</option>
+                        @foreach (var env in _environments)
+                        {
+                            <option value="@env.Id">@env.DisplayName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Action</label>
+                    <select class="form-select form-select-sm" @bind="_filterAction">
+                        <option value="">All Actions</option>
+                        <option value="@AuditAction.AppliedMigration">Applied Migration</option>
+                        <option value="@AuditAction.RolledBackMigration">Rolled Back</option>
+                        <option value="@AuditAction.ViewedMigration">Viewed</option>
+                        <option value="@AuditAction.PreviewedSql">Previewed SQL</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">From Date</label>
+                    <input type="date" class="form-control form-control-sm" @bind="_filterFromDate" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">To Date</label>
+                    <input type="date" class="form-control form-control-sm" @bind="_filterToDate" />
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-primary btn-sm w-100" @onclick="ApplyFilters">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Action</th>
+                                <th>Migration</th>
+                                <th>Environment</th>
+                                <th>User</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var entry in _auditLogs)
+                            {
+                                <tr>
+                                    <td>
+                                        <small>@entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetActionBadgeClass(entry.Action)">
+                                            @GetActionLabel(entry.Action)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small class="font-monospace">@entry.MigrationId</small>
+                                    </td>
+                                    <td>@entry.EnvironmentName</td>
+                                    <td>
+                                        <small>@entry.UserEmail</small>
+                                    </td>
+                                    <td>
+                                        <small>@entry.Duration.TotalSeconds.ToString("F2")s</small>
+                                    </td>
+                                    <td>
+                                        @if (entry.Success)
+                                        {
+                                            <span class="badge bg-success">Success</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Failed</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-link" @onclick="() => ShowDetails(entry)">
+                                            Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (!_auditLogs.Any())
+                {
+                    <div class="text-center py-5">
+                        <p class="text-muted mb-0">No audit logs found for the selected filters.</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        @if (_totalCount > _filter.Take)
+        {
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <small class="text-muted">
+                    Showing @(_filter.Skip + 1) - @Math.Min(_filter.Skip + _filter.Take, _totalCount) of @_totalCount entries
+                </small>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary" @onclick="PreviousPage" disabled="@(_filter.Skip == 0)">
+                        Previous
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="NextPage" disabled="@(_filter.Skip + _filter.Take >= _totalCount)">
+                        Next
+                    </button>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<!-- Details Modal -->
+@if (_showDetails && _selectedEntry != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Audit Log Details</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showDetails = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <strong>Timestamp:</strong><br />
+                            @_selectedEntry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Action:</strong><br />
+                            <span class="badge @GetActionBadgeClass(_selectedEntry.Action)">
+                                @_selectedEntry.Action
+                            </span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Migration ID:</strong><br />
+                            <code>@_selectedEntry.MigrationId</code>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Environment:</strong><br />
+                            @_selectedEntry.EnvironmentName
+                        </div>
+                        <div class="col-md-6">
+                            <strong>User:</strong><br />
+                            @_selectedEntry.UserEmail
+                        </div>
+                        <div class="col-md-6">
+                            <strong>IP Address:</strong><br />
+                            @_selectedEntry.UserIpAddress
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Duration:</strong><br />
+                            @_selectedEntry.Duration.TotalSeconds.ToString("F2") seconds
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Status:</strong><br />
+                            @if (_selectedEntry.Success)
+                            {
+                                <span class="badge bg-success">Success</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Failed</span>
+                            }
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_selectedEntry.Notes))
+                    {
+                        <div class="mt-3">
+                            <strong>Notes:</strong>
+                            <p class="mb-0">@_selectedEntry.Notes</p>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_selectedEntry.ErrorMessage))
+                    {
+                        <div class="alert alert-danger mt-3">
+                            <strong>Error:</strong><br />
+                            @_selectedEntry.ErrorMessage
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_selectedEntry.ExecutedSql))
+                    {
+                        <div class="mt-3">
+                            <strong>Executed SQL:</strong>
+                            <pre class="bg-dark text-light p-3 rounded mt-2" style="max-height: 300px; overflow-y: auto;"><code>@_selectedEntry.ExecutedSql</code></pre>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _showDetails = false">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<AuditLogEntry> _auditLogs = new();
+    private List<DatabaseEnvironment> _environments = new();
+    private bool _loading = true;
+    private int _totalCount = 0;
+
+    private AuditLogFilter _filter = new() { Take = 25 };
+    private AuditAction? _filterAction;
+    private DateTime? _filterFromDate;
+    private DateTime? _filterToDate;
+
+    private bool _showDetails = false;
+    private AuditLogEntry? _selectedEntry;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _environments = (await EnvironmentManager.GetAllAsync()).ToList();
+        await LoadAuditLogs();
+    }
+
+    private async Task LoadAuditLogs()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            _filter.Action = _filterAction;
+            _filter.FromDate = _filterFromDate;
+            _filter.ToDate = _filterToDate?.AddDays(1);
+
+            _auditLogs = (await AuditLogger.GetLogsAsync(_filter)).ToList();
+            _totalCount = _auditLogs.Count + _filter.Skip;
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        _filter.Skip = 0;
+        await LoadAuditLogs();
+    }
+
+    private async Task PreviousPage()
+    {
+        _filter.Skip = Math.Max(0, _filter.Skip - _filter.Take);
+        await LoadAuditLogs();
+    }
+
+    private async Task NextPage()
+    {
+        _filter.Skip += _filter.Take;
+        await LoadAuditLogs();
+    }
+
+    private void ShowDetails(AuditLogEntry entry)
+    {
+        _selectedEntry = entry;
+        _showDetails = true;
+    }
+
+    private void ExportLogs()
+    {
+        // Export functionality would be implemented here
+    }
+
+    private string GetActionBadgeClass(AuditAction action) => action switch
+    {
+        AuditAction.AppliedMigration => "bg-success",
+        AuditAction.RolledBackMigration => "bg-warning text-dark",
+        AuditAction.ViewedMigration => "bg-info text-dark",
+        AuditAction.PreviewedSql => "bg-secondary",
+        _ => "bg-secondary"
+    };
+
+    private string GetActionLabel(AuditAction action) => action switch
+    {
+        AuditAction.AppliedMigration => "Applied",
+        AuditAction.RolledBackMigration => "Rollback",
+        AuditAction.ViewedMigration => "Viewed",
+        AuditAction.PreviewedSql => "Preview",
+        AuditAction.ScheduledMigration => "Scheduled",
+        AuditAction.CancelledSchedule => "Cancelled",
+        AuditAction.ModifiedEnvironment => "Modified",
+        AuditAction.ExportedReport => "Exported",
+        _ => action.ToString()
+    };
+}

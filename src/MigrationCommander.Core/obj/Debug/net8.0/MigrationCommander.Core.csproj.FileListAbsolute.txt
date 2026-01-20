@@ -1,0 +1,14 @@
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\bin\Debug\net8.0\MigrationCommander.Core.deps.json
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\bin\Debug\net8.0\MigrationCommander.Core.runtimeconfig.json
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\bin\Debug\net8.0\MigrationCommander.Core.dll
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\bin\Debug\net8.0\MigrationCommander.Core.pdb
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\obj\Debug\net8.0\MigrationCommander.Core.csproj.AssemblyReference.cache
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\obj\Debug\net8.0\MigrationCommander.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\obj\Debug\net8.0\MigrationCommander.Core.AssemblyInfoInputs.cache
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\obj\Debug\net8.0\MigrationCommander.Core.AssemblyInfo.cs
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\obj\Debug\net8.0\MigrationCommander.Core.csproj.CoreCompileInputs.cache
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\obj\Debug\net8.0\MigrationCommander.Core.dll
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\obj\Debug\net8.0\refint\MigrationCommander.Core.dll
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\obj\Debug\net8.0\MigrationCommander.Core.pdb
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\obj\Debug\net8.0\MigrationCommander.Core.genruntimeconfig.cache
+C:\Users\AfzalAhmed\source\repos\dotnetdeveloper20xx\MultipleDatabaseEFMirgrator\MigrationCommander\src\MigrationCommander.Core\obj\Debug\net8.0\ref\MigrationCommander.Core.dll

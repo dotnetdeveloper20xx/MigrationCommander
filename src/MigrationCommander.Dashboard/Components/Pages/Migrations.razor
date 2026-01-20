@@ -1,0 +1,480 @@
+@page "/migrations"
+@using MigrationCommander.Core.Interfaces
+@using MigrationCommander.Core.Models
+@inject IEnvironmentManager EnvironmentManager
+@inject IMigrationDiscovery MigrationDiscovery
+@inject ISqlGenerator SqlGenerator
+@inject IMigrationExecutor MigrationExecutor
+@inject NavigationManager NavigationManager
+
+<PageTitle>Migrations - MigrationCommander</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Migrations</h1>
+        <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" style="width: 200px;" @bind="_selectedEnvironmentId">
+                <option value="">Select Environment</option>
+                @foreach (var env in _environments)
+                {
+                    <option value="@env.Id">@env.DisplayName</option>
+                }
+            </select>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="RefreshData" disabled="@(_selectedEnvironmentId == Guid.Empty)">
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    @if (_selectedEnvironmentId == Guid.Empty)
+    {
+        <div class="alert alert-info">
+            Please select an environment to view migrations.
+        </div>
+    }
+    else if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row mb-4">
+            <div class="col">
+                <!-- Filter Tabs -->
+                <ul class="nav nav-tabs">
+                    <li class="nav-item">
+                        <button class="nav-link @(_filter == "all" ? "active" : "")" @onclick='() => SetFilter("all")'>
+                            All <span class="badge bg-secondary ms-1">@_allMigrations.Count</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link @(_filter == "pending" ? "active" : "")" @onclick='() => SetFilter("pending")'>
+                            Pending <span class="badge bg-warning text-dark ms-1">@_pendingMigrations.Count</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link @(_filter == "applied" ? "active" : "")" @onclick='() => SetFilter("applied")'>
+                            Applied <span class="badge bg-success ms-1">@_appliedMigrations.Count</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        @if (_pendingMigrations.Any() && _filter != "applied")
+        {
+            <div class="alert alert-warning d-flex align-items-center justify-content-between mb-4">
+                <div>
+                    <strong>@_pendingMigrations.Count pending migration(s)</strong> ready to apply.
+                </div>
+                <button class="btn btn-warning btn-sm" @onclick="ApplyAllPending" disabled="@_isExecuting">
+                    @if (_isExecuting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    }
+                    Apply All Pending
+                </button>
+            </div>
+        }
+
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 40%">Migration</th>
+                                <th>Status</th>
+                                <th>Timestamp</th>
+                                <th>Applied At</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var migration in GetFilteredMigrations())
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-medium">@migration.Name</span>
+                                            <small class="text-muted font-monospace">@migration.Id</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(migration.Status)">
+                                            @migration.Status
+                                        </span>
+                                        @if (migration.IsDestructive)
+                                        {
+                                            <span class="badge bg-danger ms-1" title="Contains destructive operations">
+                                                Destructive
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="text-muted">@migration.Timestamp.ToString("yyyy-MM-dd HH:mm")</span>
+                                    </td>
+                                    <td>
+                                        @if (migration.AppliedAt.HasValue)
+                                        {
+                                            <span class="text-muted">@migration.AppliedAt.Value.ToString("yyyy-MM-dd HH:mm")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-secondary" @onclick="() => ShowSqlPreview(migration)" title="Preview SQL">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                                    <path d="M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0m6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0"/>
+                                                </svg>
+                                            </button>
+                                            @if (migration.Status == MigrationStatus.Pending)
+                                            {
+                                                <button class="btn btn-outline-success" @onclick="() => ApplyMigration(migration)" disabled="@_isExecuting" title="Apply Migration">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z"/>
+                                                    </svg>
+                                                </button>
+                                            }
+                                            @if (migration.Status == MigrationStatus.Applied)
+                                            {
+                                                <a class="btn btn-outline-warning" href="rollback?migrationId=@migration.Id&environmentId=@_selectedEnvironmentId" title="Rollback">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                                        <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
+                                                        <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
+                                                    </svg>
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (!GetFilteredMigrations().Any())
+                {
+                    <div class="text-center py-5">
+                        <p class="text-muted mb-0">No migrations found for the selected filter.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- SQL Preview Modal -->
+@if (_showSqlPreview && _selectedMigration != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">SQL Preview - @_selectedMigration.Name</h5>
+                    <button type="button" class="btn-close" @onclick="CloseSqlPreview"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-3">
+                        <li class="nav-item">
+                            <button class="nav-link @(_sqlPreviewTab == "up" ? "active" : "")" @onclick='() => _sqlPreviewTab = "up"'>
+                                UP (Apply)
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(_sqlPreviewTab == "down" ? "active" : "")" @onclick='() => _sqlPreviewTab = "down"'>
+                                DOWN (Rollback)
+                            </button>
+                        </li>
+                    </ul>
+
+                    @if (_loadingSql)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <pre class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto;"><code>@(_sqlPreviewTab == "up" ? _upSql : _downSql)</code></pre>
+                    }
+
+                    @if (_selectedMigration.AffectedTables.Any())
+                    {
+                        <div class="mt-3">
+                            <h6>Affected Tables:</h6>
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var table in _selectedMigration.AffectedTables)
+                                {
+                                    <span class="badge bg-secondary">@table</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseSqlPreview">Close</button>
+                    @if (_selectedMigration.Status == MigrationStatus.Pending)
+                    {
+                        <button type="button" class="btn btn-success" @onclick="() => ApplyMigration(_selectedMigration)" disabled="@_isExecuting">
+                            Apply Migration
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Execution Progress Modal -->
+@if (_showExecutionProgress)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Applying Migration</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Applying...</span>
+                        </div>
+                    </div>
+                    <p class="text-center mb-2">@_executionMessage</p>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar"
+                             style="width: @(_executionProgress)%">
+                            @_executionProgress%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<DatabaseEnvironment> _environments = new();
+    private List<MigrationInfo> _allMigrations = new();
+    private List<MigrationInfo> _pendingMigrations = new();
+    private List<MigrationInfo> _appliedMigrations = new();
+
+    private Guid _selectedEnvironmentId = Guid.Empty;
+    private string _filter = "all";
+    private bool _loading = false;
+
+    private bool _showSqlPreview = false;
+    private MigrationInfo? _selectedMigration;
+    private string _sqlPreviewTab = "up";
+    private string _upSql = "";
+    private string _downSql = "";
+    private bool _loadingSql = false;
+
+    private bool _isExecuting = false;
+    private bool _showExecutionProgress = false;
+    private string _executionMessage = "";
+    private int _executionProgress = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _environments = (await EnvironmentManager.GetAllAsync()).ToList();
+
+        if (_environments.Any())
+        {
+            _selectedEnvironmentId = _environments.First().Id;
+            await RefreshData();
+        }
+    }
+
+    private async Task RefreshData()
+    {
+        if (_selectedEnvironmentId == Guid.Empty) return;
+
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var environment = _environments.FirstOrDefault(e => e.Id == _selectedEnvironmentId);
+            if (environment == null) return;
+
+            _appliedMigrations = (await MigrationDiscovery.GetAppliedMigrationsAsync(environment)).ToList();
+            _pendingMigrations = (await MigrationDiscovery.GetPendingMigrationsAsync(environment)).ToList();
+            _allMigrations = _pendingMigrations.Concat(_appliedMigrations).OrderByDescending(m => m.Timestamp).ToList();
+        }
+        catch
+        {
+            // Handle error
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SetFilter(string filter)
+    {
+        _filter = filter;
+    }
+
+    private IEnumerable<MigrationInfo> GetFilteredMigrations() => _filter switch
+    {
+        "pending" => _pendingMigrations.OrderByDescending(m => m.Timestamp),
+        "applied" => _appliedMigrations.OrderByDescending(m => m.Timestamp),
+        _ => _allMigrations
+    };
+
+    private async Task ShowSqlPreview(MigrationInfo migration)
+    {
+        _selectedMigration = migration;
+        _showSqlPreview = true;
+        _sqlPreviewTab = "up";
+        _loadingSql = true;
+        StateHasChanged();
+
+        try
+        {
+            var environment = _environments.FirstOrDefault(e => e.Id == _selectedEnvironmentId);
+            if (environment != null)
+            {
+                _upSql = await SqlGenerator.GenerateUpSqlAsync(migration.Id, environment.Provider);
+                _downSql = await SqlGenerator.GenerateDownSqlAsync(migration.Id, environment.Provider);
+            }
+        }
+        catch (Exception ex)
+        {
+            _upSql = $"Error generating SQL: {ex.Message}";
+            _downSql = $"Error generating SQL: {ex.Message}";
+        }
+        finally
+        {
+            _loadingSql = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseSqlPreview()
+    {
+        _showSqlPreview = false;
+        _selectedMigration = null;
+    }
+
+    private async Task ApplyMigration(MigrationInfo migration)
+    {
+        var environment = _environments.FirstOrDefault(e => e.Id == _selectedEnvironmentId);
+        if (environment == null) return;
+
+        _isExecuting = true;
+        _showExecutionProgress = true;
+        _executionMessage = $"Applying {migration.Name}...";
+        _executionProgress = 0;
+        CloseSqlPreview();
+        StateHasChanged();
+
+        try
+        {
+            MigrationExecutor.MigrationProgress += OnMigrationProgress;
+
+            var result = await MigrationExecutor.ApplyMigrationAsync(environment, migration.Id);
+
+            if (result.Success)
+            {
+                _executionMessage = "Migration applied successfully!";
+                _executionProgress = 100;
+            }
+            else
+            {
+                _executionMessage = $"Migration failed: {result.ErrorMessage}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _executionMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            MigrationExecutor.MigrationProgress -= OnMigrationProgress;
+            _isExecuting = false;
+            StateHasChanged();
+
+            await Task.Delay(1500);
+            _showExecutionProgress = false;
+            await RefreshData();
+        }
+    }
+
+    private async Task ApplyAllPending()
+    {
+        var environment = _environments.FirstOrDefault(e => e.Id == _selectedEnvironmentId);
+        if (environment == null) return;
+
+        _isExecuting = true;
+        _showExecutionProgress = true;
+        _executionMessage = "Applying all pending migrations...";
+        _executionProgress = 0;
+        StateHasChanged();
+
+        try
+        {
+            MigrationExecutor.MigrationProgress += OnMigrationProgress;
+
+            var results = await MigrationExecutor.ApplyAllPendingAsync(environment);
+
+            var successCount = results.Count(r => r.Success);
+            var failCount = results.Count(r => !r.Success);
+
+            if (failCount == 0)
+            {
+                _executionMessage = $"Successfully applied {successCount} migration(s)!";
+                _executionProgress = 100;
+            }
+            else
+            {
+                _executionMessage = $"Completed with {failCount} failure(s). {successCount} succeeded.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _executionMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            MigrationExecutor.MigrationProgress -= OnMigrationProgress;
+            _isExecuting = false;
+            StateHasChanged();
+
+            await Task.Delay(2000);
+            _showExecutionProgress = false;
+            await RefreshData();
+        }
+    }
+
+    private void OnMigrationProgress(object? sender, MigrationProgressEventArgs e)
+    {
+        _executionMessage = e.StatusMessage;
+        _executionProgress = e.ProgressPercentage;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string GetStatusBadgeClass(MigrationStatus status) => status switch
+    {
+        MigrationStatus.Applied => "bg-success",
+        MigrationStatus.Pending => "bg-warning text-dark",
+        MigrationStatus.Failed => "bg-danger",
+        MigrationStatus.RolledBack => "bg-info",
+        MigrationStatus.Skipped => "bg-secondary",
+        _ => "bg-secondary"
+    };
+}

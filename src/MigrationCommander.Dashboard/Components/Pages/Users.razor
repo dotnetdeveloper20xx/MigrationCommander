@@ -1,0 +1,397 @@
+@page "/users"
+@using MigrationCommander.Core.Interfaces
+@using MigrationCommander.Core.Models.Security
+@using MigrationCommander.Dashboard.Services
+@inject IAuthorizationService AuthorizationService
+@inject UserContextService UserContext
+
+<PageTitle>Users - MigrationCommander</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">User Management</h1>
+        <button class="btn btn-primary" @onclick="ShowAddUserModal">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-plus me-1" viewBox="0 0 16 16">
+                <path d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H1s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C9.516 10.68 8.289 10 6 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664z"/>
+                <path fill-rule="evenodd" d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5"/>
+            </svg>
+            Add User
+        </button>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "users" ? "active" : "")" @onclick='() => _activeTab = "users"'>
+                Users <span class="badge bg-secondary ms-1">@_users.Count</span>
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "roles" ? "active" : "")" @onclick='() => _activeTab = "roles"'>
+                Roles <span class="badge bg-secondary ms-1">@_roles.Count</span>
+            </button>
+        </li>
+    </ul>
+
+    @if (_loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (_activeTab == "users")
+    {
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Roles</th>
+                                <th>Status</th>
+                                <th>Last Login</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in _users)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                                                @user.DisplayName.Substring(0, 1).ToUpper()
+                                            </div>
+                                            <div>
+                                                <div class="fw-medium">@user.DisplayName</div>
+                                                <small class="text-muted">@user.Username</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>@user.Email</td>
+                                    <td>
+                                        @foreach (var role in user.Roles)
+                                        {
+                                            <span class="badge bg-info me-1">@role.DisplayName</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (user.IsActive)
+                                        {
+                                            <span class="badge bg-success">Active</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (user.LastLoginAt.HasValue)
+                                        {
+                                            <small class="text-muted">@user.LastLoginAt.Value.ToString("MMM d, yyyy HH:mm")</small>
+                                        }
+                                        else
+                                        {
+                                            <small class="text-muted">Never</small>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-secondary" @onclick="() => ShowEditUserModal(user)">Edit</button>
+                                            <button class="btn btn-outline-danger" @onclick="() => DeleteUser(user)">Delete</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        @if (!_users.Any())
+        {
+            <div class="text-center py-5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-people text-muted mb-3" viewBox="0 0 16 16">
+                    <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.014.002H7.022ZM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0M6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816M4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0m3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/>
+                </svg>
+                <h4 class="text-muted">No users configured</h4>
+                <p class="text-muted">Add users to manage access to MigrationCommander.</p>
+                <button class="btn btn-primary" @onclick="ShowAddUserModal">Add User</button>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var role in _roles)
+            {
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">@role.DisplayName</h5>
+                            @if (role.IsBuiltIn)
+                            {
+                                <span class="badge bg-secondary">Built-in</span>
+                            }
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small">@role.Description</p>
+                            <h6 class="small text-uppercase text-muted mb-2">Permissions</h6>
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var permission in role.Permissions.Take(8))
+                                {
+                                    <span class="badge bg-light text-dark border">@permission</span>
+                                }
+                                @if (role.Permissions.Count > 8)
+                                {
+                                    <span class="badge bg-secondary">+@(role.Permissions.Count - 8) more</span>
+                                }
+                            </div>
+                        </div>
+                        @if (!role.IsBuiltIn)
+                        {
+                            <div class="card-footer bg-transparent">
+                                <button class="btn btn-sm btn-outline-secondary me-1">Edit</button>
+                                <button class="btn btn-sm btn-outline-danger">Delete</button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Add/Edit User Modal -->
+@if (_showUserModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(_editingUser == null ? "Add User" : "Edit User")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseUserModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Username <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="_userForm.Username" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Display Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="_userForm.DisplayName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" @bind="_userForm.Email" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Roles</label>
+                        @foreach (var role in _roles)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="role-@role.Id"
+                                       checked="@_userForm.SelectedRoleIds.Contains(role.Id)"
+                                       @onchange="() => ToggleRole(role.Id)" />
+                                <label class="form-check-label" for="role-@role.Id">
+                                    @role.DisplayName
+                                    <small class="text-muted">- @role.Description</small>
+                                </label>
+                            </div>
+                        }
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" @bind="_userForm.IsActive" id="isActive" />
+                        <label class="form-check-label" for="isActive">Active</label>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="alert alert-danger mb-0">@_errorMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseUserModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveUser" disabled="@_saving">
+                        @if (_saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string _activeTab = "users";
+    private List<User> _users = new();
+    private List<Role> _roles = new();
+    private bool _loading = true;
+
+    private bool _showUserModal = false;
+    private User? _editingUser = null;
+    private UserFormModel _userForm = new();
+    private bool _saving = false;
+    private string _errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Load roles from service
+            _roles = (await AuthorizationService.GetAllRolesAsync()).ToList();
+
+            // Load users from service
+            _users = (await AuthorizationService.GetAllUsersAsync()).ToList();
+        }
+        catch
+        {
+            // Fallback to built-in roles if service fails
+            _roles = Role.GetBuiltInRoles().ToList();
+            _users = new List<User>();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ShowAddUserModal()
+    {
+        _editingUser = null;
+        _userForm = new UserFormModel { IsActive = true };
+        _errorMessage = "";
+        _showUserModal = true;
+    }
+
+    private void ShowEditUserModal(User user)
+    {
+        _editingUser = user;
+        _userForm = new UserFormModel
+        {
+            Username = user.Username,
+            DisplayName = user.DisplayName,
+            Email = user.Email,
+            IsActive = user.IsActive,
+            SelectedRoleIds = user.Roles.Select(r => r.Id).ToList()
+        };
+        _errorMessage = "";
+        _showUserModal = true;
+    }
+
+    private void CloseUserModal()
+    {
+        _showUserModal = false;
+        _editingUser = null;
+    }
+
+    private void ToggleRole(Guid roleId)
+    {
+        if (_userForm.SelectedRoleIds.Contains(roleId))
+        {
+            _userForm.SelectedRoleIds.Remove(roleId);
+        }
+        else
+        {
+            _userForm.SelectedRoleIds.Add(roleId);
+        }
+    }
+
+    private async Task SaveUser()
+    {
+        _errorMessage = "";
+
+        if (string.IsNullOrWhiteSpace(_userForm.Username) ||
+            string.IsNullOrWhiteSpace(_userForm.DisplayName) ||
+            string.IsNullOrWhiteSpace(_userForm.Email))
+        {
+            _errorMessage = "Please fill in all required fields.";
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+
+        try
+        {
+            if (_editingUser == null)
+            {
+                // Create new user
+                var newUser = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Username = _userForm.Username,
+                    DisplayName = _userForm.DisplayName,
+                    Email = _userForm.Email,
+                    IsActive = _userForm.IsActive,
+                    CreatedAt = DateTime.UtcNow,
+                    RoleIds = _userForm.SelectedRoleIds
+                };
+
+                await AuthorizationService.CreateUserAsync(newUser);
+            }
+            else
+            {
+                // Update existing user
+                _editingUser.Username = _userForm.Username;
+                _editingUser.DisplayName = _userForm.DisplayName;
+                _editingUser.Email = _userForm.Email;
+                _editingUser.IsActive = _userForm.IsActive;
+                _editingUser.RoleIds = _userForm.SelectedRoleIds;
+
+                await AuthorizationService.UpdateUserAsync(_editingUser);
+            }
+
+            CloseUserModal();
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteUser(User user)
+    {
+        try
+        {
+            await AuthorizationService.DeleteUserAsync(user.Id);
+            await LoadDataAsync();
+        }
+        catch
+        {
+            // Handle error
+        }
+    }
+
+    private class UserFormModel
+    {
+        public string Username { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string Email { get; set; } = "";
+        public bool IsActive { get; set; }
+        public List<Guid> SelectedRoleIds { get; set; } = new();
+    }
+}
