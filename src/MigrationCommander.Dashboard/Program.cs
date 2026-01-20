@@ -4,13 +4,11 @@ using MigrationCommander.Dashboard.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add MigrationCommander services
+// Add MigrationCommander services with in-memory SQLite database
 builder.Services.AddMigrationCommander(options =>
 {
-    options.InternalDatabasePath = $"Data Source={Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "MigrationCommander",
-        "migrationcommander.db")}";
+    // Use in-memory SQLite - no file system or Docker required
+    options.InternalDatabasePath = "Data Source=MigrationCommander;Mode=Memory;Cache=Shared";
     options.EnableRealTimeUpdates = true;
 });
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MigrationCommander.Core.Interfaces;
 using MigrationCommander.Core.Services;
@@ -45,10 +46,28 @@ public static class ServiceCollectionExtensions
 
         // Register internal SQLite database context
         var connectionString = options.InternalDatabasePath ?? "Data Source=migration_commander.db";
-        services.AddDbContext<MigrationCommanderDbContext>(opts =>
+
+        // For in-memory SQLite, we need to keep a connection open to maintain the database
+        var isInMemory = connectionString.Contains("Mode=Memory", StringComparison.OrdinalIgnoreCase);
+        if (isInMemory)
         {
-            opts.UseSqlite(connectionString);
-        });
+            // Create and open a connection that stays alive for the app lifetime
+            var keepAliveConnection = new SqliteConnection(connectionString);
+            keepAliveConnection.Open();
+            services.AddSingleton(keepAliveConnection);
+
+            services.AddDbContext<MigrationCommanderDbContext>(opts =>
+            {
+                opts.UseSqlite(connectionString);
+            });
+        }
+        else
+        {
+            services.AddDbContext<MigrationCommanderDbContext>(opts =>
+            {
+                opts.UseSqlite(connectionString);
+            });
+        }
 
         // Register repositories
         services.AddScoped<DatabaseRepository>();
