@@ -23,6 +23,7 @@
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> •
+  <a href="#screenshots">Screenshots</a> •
   <a href="#features">Features</a> •
   <a href="#architecture">Architecture</a> •
   <a href="#design-patterns">Design Patterns</a> •
@@ -144,6 +145,55 @@ A beautiful Blazor Server dashboard with **SignalR-powered live updates**:
 - Affected tables and estimated row counts
 - Risk indicators for destructive operations
 - Rollback script generation
+
+---
+
+## Screenshots
+
+### Dashboard
+Real-time overview of all environments, migration status, and recent activity with SignalR-powered live updates.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Database Environments
+Manage multiple databases across different providers (SQL Server, PostgreSQL, MySQL, SQLite) from a single interface.
+
+![Environments](docs/screenshots/environments.png)
+
+### Scheduled Migrations
+Schedule migrations for off-peak hours with automatic execution and status tracking.
+
+![Schedule](docs/screenshots/schedule.png)
+
+### Audit Log
+Comprehensive audit trail with advanced filtering - track every action, user, and outcome for compliance.
+
+![Audit Log](docs/screenshots/audit-log.png)
+
+### Reports & Statistics
+Visual statistics and exportable reports (PDF, Excel) for compliance and analysis.
+
+![Reports](docs/screenshots/reports.png)
+
+### Approval Workflow
+Production-grade approval system with expiring requests and multi-approver support.
+
+![Approvals](docs/screenshots/approvals.png)
+
+### User Management
+Role-based access control with 31 granular permissions across 4 built-in roles.
+
+![Users](docs/screenshots/users.png)
+
+### Rollback Wizard
+Safe, guided rollback process with impact analysis before execution.
+
+![Rollback](docs/screenshots/rollback.png)
+
+### Settings
+Configurable migration settings, notifications, and audit retention policies.
+
+![Settings](docs/screenshots/settings.png)
 
 ---
 
